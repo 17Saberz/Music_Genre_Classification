@@ -6,7 +6,7 @@ from tensorflow.image import resize
 import os
 from pydub import AudioSegment
 import matplotlib.pyplot as plt
-
+import yt_dlp
 
 #Function
 def load_model():
@@ -73,6 +73,36 @@ def model_prediction(X_test):
     # Return the top 3 classes with their confidence scores
     return sorted_classes, avg_confidences  # List of tuples (class, confidence)
 
+# Function to download and convert YouTube audio to MP3
+def download_youtube_audio(youtube_url, save_folder="music_genre"):
+    os.makedirs(save_folder, exist_ok=True)  # Ensure the folder exists
+    
+    # Define file path
+    filename = os.path.join(save_folder, "youtube_audio.mp3")
+    
+    # yt_dlp options
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': os.path.join(save_folder, 'youtube_audio.%(ext)s'),
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        'quiet': True
+    }
+    
+    # Download audio
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([youtube_url])
+    
+    # Rename downloaded file to standard filename
+    for file in os.listdir(save_folder):
+        if file.startswith("youtube_audio") and file.endswith(".mp3"):
+            os.rename(os.path.join(save_folder, file), filename)
+            break
+    
+    return filename
 
 #Stramlit UI
 st.sidebar.title("Dashboard")
@@ -120,56 +150,60 @@ elif(app_mode=="About Project"):
 elif(app_mode=="Prediction"):
     st.header("Model Prediction")
 
-    # Upload audio/video file
-    audio_file = st.file_uploader("Upload an audio file", type=["mp3", "wav", "ogg", "mp4"])
-
-    if audio_file is not None:
-        # Define folder to save uploaded files
-        upload_folder = "music_genre"
-        os.makedirs(upload_folder, exist_ok=True)  # Ensure the folder exists
-
-        # Get the original file extension
-        original_extension = audio_file.name.split(".")[-1].lower()
-
-        # Define the target file path (convert everything to .mp3)
-        filepath = os.path.join(upload_folder, os.path.splitext(audio_file.name)[0] + ".mp3")
-
-        # Save the uploaded file temporarily
-        temp_path = os.path.join(upload_folder, audio_file.name)
-        with open(temp_path, "wb") as f:
-            f.write(audio_file.getbuffer())
-
-        # Convert file if it's not already MP3
-        if original_extension != "mp3":
-            st.warning(f"Converting {original_extension.upper()} to MP3...")
-
-            # Load audio from file (even if it's MP4)
-            audio = AudioSegment.from_file(temp_path, format=original_extension)
-
-            # Export as MP3
-            audio.export(filepath, format="mp3")
-
-            # Remove the temporary file
-            os.remove(temp_path)
-
-            st.success(f"File converted and saved as: {filepath}")
-
-        else:
-            st.success(f"File successfully uploaded as: {filepath}")
-            
-    # Play the converted MP3 file
-    if st.button("Play Audio"):
-        st.audio(filepath)
+    # Option to upload file OR enter YouTube link
+    upload_option = st.radio("Select Input Method:", ["Upload Audio File", "Enter YouTube Link"])
+    
+    if upload_option == "Upload Audio File":
+        audio_file = st.file_uploader("Upload an audio file", type=["mp3", "wav", "ogg", "mp4"])
         
-    #Predict Button
-    if(st.button("Predict")):
+        if audio_file is not None:
+            upload_folder = "music_genre"
+            os.makedirs(upload_folder, exist_ok=True)
+    
+            # Get file extension
+            original_extension = audio_file.name.split(".")[-1].lower()
+    
+            # Define the target MP3 file path
+            filepath = os.path.join(upload_folder, os.path.splitext(audio_file.name)[0] + ".mp3")
+    
+            # Save the uploaded file temporarily
+            temp_path = os.path.join(upload_folder, audio_file.name)
+            with open(temp_path, "wb") as f:
+                f.write(audio_file.getbuffer())
+    
+            # Convert file if it's not already MP3
+            if original_extension != "mp3":
+                st.warning(f"Converting {original_extension.upper()} to MP3...")
+                audio = AudioSegment.from_file(temp_path, format=original_extension)
+                audio.export(filepath, format="mp3")
+                os.remove(temp_path)
+                st.success(f"File converted and saved as: {filepath}")
+            else:
+                st.success(f"File successfully uploaded as: {filepath}")
+    
+    elif upload_option == "Enter YouTube Link":
+        youtube_url = st.text_input("Enter YouTube video URL:")
+        
+        if youtube_url:
+            st.warning("Downloading and extracting audio from YouTube...")
+            filepath = download_youtube_audio(youtube_url)
+            st.success(f"Audio extracted and saved as: {filepath}")
+    
+    # Play the audio
+    if 'filepath' in locals() and st.button("Play Audio"):
+        st.audio(filepath)
+    
+    # Predict Button
+    if 'filepath' in locals() and st.button("Predict"):
         with st.spinner("Please wait.."):
             X_test = load_and_preprocess_data(filepath)
-            classes = ['blues', 'classical','country','disco','hiphop','jazz','metal','pop','reggae','rock']
-            c_index, avg_confidences = model_prediction(X_test=X_test)
+            classes = ['blues', 'classical', 'country', 'disco', 'hiphop', 'jazz', 'metal', 'pop', 'reggae', 'rock']
             
-            st.subheader("Top 3 Predicted Genres:")
-
+            # Get all genre confidence scores
+            model = load_model()
+            y_pred = model.predict(X_test)
+            avg_confidences = np.mean(y_pred, axis=0)
+    
             # Display all genre predictions as text
             st.subheader("Predicted Genre Probabilities:")
             for genre, confidence in zip(classes, avg_confidences):
@@ -178,8 +212,7 @@ elif(app_mode=="Prediction"):
             # Pie Chart for All 10 Genres
             fig1, ax1 = plt.subplots()
             ax1.pie(avg_confidences, labels=classes, autopct='%1.1f%%', startangle=90, colors=plt.cm.Paired.colors)
-            ax1.axis('equal')  # Equal aspect ratio ensures the pie chart is a circle.
-    
+            ax1.axis('equal')
             st.subheader("Confidence Distribution (Pie Chart)")
             st.pyplot(fig1)
     
@@ -188,8 +221,6 @@ elif(app_mode=="Prediction"):
             ax2.barh(classes, avg_confidences, color='skyblue')
             ax2.set_xlabel("Confidence Score")
             ax2.set_title("Confidence Scores for All Genres")
-            ax2.invert_yaxis()  # Highest confidence at the top
-    
+            ax2.invert_yaxis()
             st.subheader("Confidence Distribution (Bar Chart)")
             st.pyplot(fig2)
-
