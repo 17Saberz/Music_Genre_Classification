@@ -5,6 +5,8 @@ import librosa
 from tensorflow.image import resize
 import os
 from pydub import AudioSegment
+import matplotlib.pyplot as plt
+
 
 #Function
 def load_model():
@@ -63,12 +65,13 @@ def model_prediction(X_test):
 
     # Compute mean confidence for each class
     avg_confidence = {cls: np.mean(class_confidence[cls]) for cls in class_confidence}
+    avg_confidences = np.mean(y_pred, axis=0)  # Average confidence across chunks
 
     # Sort classes by highest average confidence
     sorted_classes = sorted(avg_confidence.items(), key=lambda x: x[1], reverse=True)[:3]
 
     # Return the top 3 classes with their confidence scores
-    return sorted_classes  # List of tuples (class, confidence)
+    return sorted_classes, avg_confidences  # List of tuples (class, confidence)
 
 
 #Stramlit UI
@@ -117,8 +120,8 @@ elif(app_mode=="About Project"):
 elif(app_mode=="Prediction"):
     st.header("Model Prediction")
 
-    # Upload audio file
-    audio_file = st.file_uploader("Upload an audio file", type=["mp3", "wav", "ogg"])
+    # Upload audio/video file
+    audio_file = st.file_uploader("Upload an audio file", type=["mp3", "wav", "ogg", "mp4"])
 
     if audio_file is not None:
         # Define folder to save uploaded files
@@ -126,30 +129,34 @@ elif(app_mode=="Prediction"):
         os.makedirs(upload_folder, exist_ok=True)  # Ensure the folder exists
 
         # Get the original file extension
-        original_extension = audio_file.name.split(".")[-1]
+        original_extension = audio_file.name.split(".")[-1].lower()
 
         # Define the target file path (convert everything to .mp3)
         filepath = os.path.join(upload_folder, os.path.splitext(audio_file.name)[0] + ".mp3")
 
-        # Read the uploaded file
-        with open(filepath, "wb") as f:
+        # Save the uploaded file temporarily
+        temp_path = os.path.join(upload_folder, audio_file.name)
+        with open(temp_path, "wb") as f:
             f.write(audio_file.getbuffer())
 
         # Convert file if it's not already MP3
-        if original_extension.lower() != "mp3":
+        if original_extension != "mp3":
             st.warning(f"Converting {original_extension.upper()} to MP3...")
 
-            # Load audio using pydub
-            audio = AudioSegment.from_file(audio_file, format=original_extension)
+            # Load audio from file (even if it's MP4)
+            audio = AudioSegment.from_file(temp_path, format=original_extension)
 
             # Export as MP3
             audio.export(filepath, format="mp3")
+
+            # Remove the temporary file
+            os.remove(temp_path)
 
             st.success(f"File converted and saved as: {filepath}")
 
         else:
             st.success(f"File successfully uploaded as: {filepath}")
-
+            
     # Play the converted MP3 file
     if st.button("Play Audio"):
         st.audio(filepath)
@@ -159,10 +166,30 @@ elif(app_mode=="Prediction"):
         with st.spinner("Please wait.."):
             X_test = load_and_preprocess_data(filepath)
             classes = ['blues', 'classical','country','disco','hiphop','jazz','metal','pop','reggae','rock']
-            c_index = model_prediction(X_test=X_test)
+            c_index, avg_confidences = model_prediction(X_test=X_test)
             
             st.subheader("Top 3 Predicted Genres:")
 
-            for index, confidence in c_index:
-                st.markdown(f"🎵 **{classes[index]}** - Confidence: **{confidence:.2%}**")
+            # Display all genre predictions as text
+            st.subheader("Predicted Genre Probabilities:")
+            for genre, confidence in zip(classes, avg_confidences):
+                st.markdown(f"🎵 **{genre}** - Confidence: **{confidence:.2%}**")
+    
+            # Pie Chart for All 10 Genres
+            fig1, ax1 = plt.subplots()
+            ax1.pie(avg_confidences, labels=classes, autopct='%1.1f%%', startangle=90, colors=plt.cm.Paired.colors)
+            ax1.axis('equal')  # Equal aspect ratio ensures the pie chart is a circle.
+    
+            st.subheader("Confidence Distribution (Pie Chart)")
+            st.pyplot(fig1)
+    
+            # Bar Chart for All 10 Genres
+            fig2, ax2 = plt.subplots(figsize=(10, 5))
+            ax2.barh(classes, avg_confidences, color='skyblue')
+            ax2.set_xlabel("Confidence Score")
+            ax2.set_title("Confidence Scores for All Genres")
+            ax2.invert_yaxis()  # Highest confidence at the top
+    
+            st.subheader("Confidence Distribution (Bar Chart)")
+            st.pyplot(fig2)
 
