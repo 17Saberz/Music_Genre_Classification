@@ -92,3 +92,8 @@ Then, open a web browser and navigate to `http://localhost:8501`.
 
 ## Accuracy Result
 ![Image](https://github.com/user-attachments/assets/31e67dc5-4400-43b8-9493-988ac0ef825c)
+
+## Confusion Matrix
+![Image](https://github.com/user-attachments/assets/82e3077f-2975-4849-813b-40d4da3a96fc)
+
+---
