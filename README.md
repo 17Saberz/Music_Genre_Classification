@@ -87,6 +87,9 @@ Then, open a web browser and navigate to `http://localhost:8501`.
 - The model is trained on the GTZAN dataset using a convolutional neural network (CNN).
 
 ---
+## Model Architecture
+![Image](https://github.com/user-attachments/assets/c8c26b08-44af-4275-ae40-5f1774281978)
+
 ## Loss Result
 ![Image](https://github.com/user-attachments/assets/25db9d5b-2ccf-41f2-a580-77ccaf975353)
 
