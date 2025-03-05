@@ -88,7 +88,7 @@ Then, open a web browser and navigate to `http://localhost:8501`.
 
 ---
 ## Model Architecture
-![Image](https://github.com/user-attachments/assets/c8c26b08-44af-4275-ae40-5f1774281978)
+![Image](https://github.com/user-attachments/assets/86d485df-332f-4291-9029-090838f7e324)
 
 ## Loss Result
 ![Image](https://github.com/user-attachments/assets/25db9d5b-2ccf-41f2-a580-77ccaf975353)
