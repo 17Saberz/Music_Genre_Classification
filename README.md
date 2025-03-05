@@ -67,7 +67,7 @@ Then, open a web browser and navigate to `http://localhost:8501`.
 ## Dataset
 
 - The dataset consists of audio files of 10 genres: `['blues', 'classical', 'country', 'disco', 'hiphop', 'jazz', 'metal', 'pop', 'reggae', 'rock']`.
-- Data includes 100 audio files per genre, each of 30 seconds in length (sourced from GTZAN dataset).
+- Data includes 100 audio files per genre, each of 30 seconds in length (sourced from [GTZAN Dataset on Kaggle](https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification)).
 
 ## Troubleshooting
 
