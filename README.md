@@ -43,6 +43,8 @@ To run this project locally using Anaconda, follow these steps:
     ```bash
     conda install -c conda-forge ffmpeg
     ```
+    
+5. Run all section in training_model.ipynb
 
 ## Running the Application
 
